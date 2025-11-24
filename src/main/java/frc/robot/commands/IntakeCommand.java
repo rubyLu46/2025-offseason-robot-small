@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.ElevatorCommonNT;
 import frc.robot.EndEffectorParamsNT;
 import frc.robot.drivers.DestinationSupplier;
-import frc.robot.subsystems.elevator.ElevatorSubsystem;
+import frc.robot.subsystems.Elevator.ElevatorSubsystem;
 import frc.robot.subsystems.endeffector.EndEffectorSubsystem;
 import frc.robot.subsystems.indicator.IndicatorIO.Patterns;
 import frc.robot.subsystems.indicator.IndicatorSubsystem;

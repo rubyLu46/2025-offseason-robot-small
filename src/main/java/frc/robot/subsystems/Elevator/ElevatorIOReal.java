@@ -1,4 +1,4 @@
-package frc.robot.subsystems.elevator;
+package frc.robot.subsystems.Elevator;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
@@ -10,18 +10,17 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
+import frc.robot.ElevatorCommonNT.ElevatorGainsClass;
 
 import static frc.robot.Constants.Elevator.*;
 import static frc.robot.ElevatorCommonNT.*;
 import static frc.robot.Ports.ELEVATOR_FOLLOWER;
 import static frc.robot.Ports.ELEVATOR_MAIN;
 
-public class ElevatorIOReal implements ElevatorIO {
-    // Hardware
-    private final TalonFX leader;
-    private final TalonFX follower;
+public class ElevatorIOReal implements ElevatorIO{
+    private final TalonFX leader = new TalonFX(ELEVATOR_MAIN.id,ELEVATOR_MAIN.bus);
+    private final TalonFX follower = new TalonFX(ELEVATOR_FOLLOWER.id,ELEVATOR_FOLLOWER.bus);
 
-    // Configurators
     private final TalonFXConfigurator leaderConfigurator;
     private final TalonFXConfigurator followerConfigurator;
 
@@ -40,31 +39,18 @@ public class ElevatorIOReal implements ElevatorIO {
     private boolean isGoingUp = false;
 
     public ElevatorIOReal() {
-        this.leader = new TalonFX(ELEVATOR_MAIN.id, ELEVATOR_MAIN.bus);
-        this.follower = new TalonFX(ELEVATOR_FOLLOWER.id, ELEVATOR_FOLLOWER.bus);
-
         this.leaderConfigurator = leader.getConfigurator();
         this.followerConfigurator = follower.getConfigurator();
 
-        // Configs
-        CurrentLimitsConfigs currentLimitsConfigs = new CurrentLimitsConfigs();
+        configureCurrentLimits();
+        configureMotorOutputs();
+        initializePositions();
 
-        leader.setPosition(heightToTalonPos(ELEVATOR_DEFAULT_POSITION_WHEN_DISABLED));
-        follower.setPosition(heightToTalonPos(ELEVATOR_DEFAULT_POSITION_WHEN_DISABLED));
-
-        MotorOutputConfigs leaderMotorConfigs = new MotorOutputConfigs();
-        leaderMotorConfigs.NeutralMode = NeutralModeValue.Brake;
-        leaderMotorConfigs.Inverted = InvertedValue.CounterClockwise_Positive;
-        MotorOutputConfigs followerMotorConfigs = new MotorOutputConfigs();
-        followerMotorConfigs.NeutralMode = NeutralModeValue.Brake;
-
-        // Initialize motion magic configs (not used for Dynamic Motion Magic, but kept for compatibility)
         motionMagicConfigs = new MotionMagicConfigs();
-        motionMagicConfigs.MotionMagicAcceleration = motionAccelerationUp.getValue(); // Default fallback
-        motionMagicConfigs.MotionMagicCruiseVelocity = motionCruiseVelocityUp.getValue(); // Default fallback
-        motionMagicConfigs.MotionMagicJerk = motionJerkUp.getValue(); // Default fallback
+        motionMagicConfigs.MotionMagicAcceleration = motionAccelerationUp.getValue();
+        motionMagicConfigs.MotionMagicCruiseVelocity = motionCruiseVelocityUp.getValue();
+        motionMagicConfigs.MotionMagicJerk = motionJerkUp.getValue();
 
-        // Set default Dynamic Motion Magic parameters (will be overridden in setElevatorTarget)
         motionRequest.Velocity = motionCruiseVelocityUp.getValue();
         motionRequest.Acceleration = motionAccelerationUp.getValue();
         motionRequest.Jerk = motionJerkUp.getValue();
@@ -78,15 +64,8 @@ public class ElevatorIOReal implements ElevatorIO {
         slot0Configs.kI = ElevatorGainsClass.ELEVATOR_KI.getValue();
         slot0Configs.kD = ElevatorGainsClass.ELEVATOR_KD.getValue();
 
-        //Since elevator don't start at zero, not needed
-        //resetElevatorPosition();
-
-        leaderConfigurator.apply(currentLimitsConfigs);
-        leaderConfigurator.apply(leaderMotorConfigs);
         leaderConfigurator.apply(slot0Configs);
         leaderConfigurator.apply(motionMagicConfigs);
-        followerConfigurator.apply(currentLimitsConfigs);
-        followerConfigurator.apply(followerMotorConfigs);
         followerConfigurator.apply(slot0Configs);
         followerConfigurator.apply(motionMagicConfigs);
 
@@ -101,7 +80,28 @@ public class ElevatorIOReal implements ElevatorIO {
         tempLeft = leader.getDeviceTemp();
 
         follower.setControl(new Follower(leader.getDeviceID(), true));
+    }
 
+    private void configureCurrentLimits(){
+        CurrentLimitsConfigs currentLimitsConfigs = new CurrentLimitsConfigs();
+        leaderConfigurator.apply(currentLimitsConfigs);
+        followerConfigurator.apply(currentLimitsConfigs);
+    }
+
+    private void configureMotorOutputs() {
+        MotorOutputConfigs leaderMotorConfigs = new MotorOutputConfigs();
+        leaderMotorConfigs.NeutralMode = NeutralModeValue.Brake;
+        leaderMotorConfigs.Inverted = InvertedValue.CounterClockwise_Positive;
+        leaderConfigurator.apply(leaderMotorConfigs);
+
+        MotorOutputConfigs followerMotorConfigs = new MotorOutputConfigs();
+        followerMotorConfigs.NeutralMode = NeutralModeValue.Brake;
+        followerConfigurator.apply(followerMotorConfigs);
+    }
+
+    public void initializePositions(){
+        leader.setPosition(heightToMotorRot(ELEVATOR_DEFAULT_POSITION_WHEN_DISABLED));
+        follower.setPosition(heightToMotorRot(ELEVATOR_DEFAULT_POSITION_WHEN_DISABLED));
     }
 
     @Override
@@ -115,7 +115,7 @@ public class ElevatorIOReal implements ElevatorIO {
                 tempLeft
         );
 
-        inputs.positionMeters = talonPosToHeight(leader.getPosition().getValueAsDouble());
+        inputs.currentPositionMeters = motorRotToHeight(leader.getPosition().getValueAsDouble());
         inputs.setpointMeters = setpointMeters;
         inputs.velocityMetersPerSec = getElevatorVelocity();
         inputs.appliedVolts = voltageLeft.getValueAsDouble();
@@ -123,11 +123,13 @@ public class ElevatorIOReal implements ElevatorIO {
         inputs.supplyCurrentAmps = supplyLeft.getValueAsDouble();
         inputs.tempCelsius = tempLeft.getValueAsDouble();
         inputs.motorVoltage = leader.getMotorVoltage().getValueAsDouble();
-        // Dynamic Motion Magic logging
+        // Dynamic Motion Magic
         inputs.isGoingUp = isGoingUp;
         inputs.currentAcceleration = isGoingUp ? motionAccelerationUp.getValue() : motionAccelerationDown.getValue();
         inputs.currentCruiseVelocity = isGoingUp ? motionCruiseVelocityUp.getValue() : motionCruiseVelocityDown.getValue();
         inputs.currentJerk = isGoingUp ? motionJerkUp.getValue() : motionJerkDown.getValue();
+        
+        //update configs if needed
         if (ElevatorGainsClass.isAnyChanged()) {
             slot0Configs.kA = ElevatorGainsClass.ELEVATOR_KA.getValue();
             slot0Configs.kS = ElevatorGainsClass.ELEVATOR_KS.getValue();
@@ -140,7 +142,7 @@ public class ElevatorIOReal implements ElevatorIO {
             leaderConfigurator.apply(slot0Configs);
             followerConfigurator.apply(slot0Configs);
 
-            // Update Dynamic Motion Magic parameters in real-time during tuning
+            // Update Dynamic Motion Magic
             if (isGoingUp) {
                 motionRequest.Velocity = motionCruiseVelocityUp.getValue();
                 motionRequest.Acceleration = motionAccelerationUp.getValue();
@@ -159,25 +161,17 @@ public class ElevatorIOReal implements ElevatorIO {
     }
 
     @Override
-    public void setElevatorTarget(double meters) {
-        // Default implementation - use last known direction or assume up for safety
-        setElevatorTarget(meters, isGoingUp);
-    }
-
-    @Override
     public void setElevatorTarget(double meters, boolean goingUp) {
         setpointMeters = meters;
         isGoingUp = goingUp;
-        double targetPosition = heightToTalonPos(Math.min(meters, MAX_EXTENSION_METERS.getValue()));
+        double targetPosition = heightToMotorRot(Math.min(meters, MAX_EXTENSION_METERS.getValue()));
 
-        // Apply the appropriate motion magic configs based on direction
-        if (isGoingUp) {
-            // Going up - use up configs for slower, more controlled movement
+        if (isGoingUp){
             motionRequest.Velocity = motionCruiseVelocityUp.getValue();
             motionRequest.Acceleration = motionAccelerationUp.getValue();
             motionRequest.Jerk = motionJerkUp.getValue();
-        } else {
-            // Going down - use down configs for faster movement (gravity assisted)
+        }
+        else{
             motionRequest.Velocity = motionCruiseVelocityDown.getValue();
             motionRequest.Acceleration = motionAccelerationDown.getValue();
             motionRequest.Jerk = motionJerkDown.getValue();
@@ -193,20 +187,20 @@ public class ElevatorIOReal implements ElevatorIO {
     }
 
     @Override
-    public double getElevatorVelocity() {
-        return talonPosToHeight(leader.getVelocity().getValueAsDouble());
-    }
-
-    private double heightToTalonPos(double heightMeters) {
-        return (heightMeters / (Math.PI * ELEVATOR_SPOOL_DIAMETER)) * ELEVATOR_GEAR_RATIO;
-    }
-
-    private double talonPosToHeight(double rotations) {
-        return rotations * (Math.PI * ELEVATOR_SPOOL_DIAMETER) / ELEVATOR_GEAR_RATIO;
+    public double getElevatorVelocity(){
+        return motorRotToHeight(leader.getVelocity().getValueAsDouble());
     }
 
     @Override
-    public double getElevatorHeight() {
-        return talonPosToHeight(leader.getPosition().getValueAsDouble());
+    public double getElevatorHeight(){
+        return motorRotToHeight(leader.getPosition().getValueAsDouble());
+    }
+
+    public double heightToMotorRot(double heightMeters){
+        return (heightMeters/(Math.PI*ELEVATOR_SPOOL_DIAMETER))*ELEVATOR_GEAR_RATIO;
+    }
+
+    public double motorRotToHeight(double rotations){
+        return rotations*(Math.PI*ELEVATOR_SPOOL_DIAMETER)/ELEVATOR_GEAR_RATIO;
     }
 }

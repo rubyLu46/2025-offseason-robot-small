@@ -1,4 +1,4 @@
-package frc.robot.subsystems.elevator;
+package frc.robot.subsystems.Elevator;
 
 import edu.wpi.first.math.*;
 import edu.wpi.first.math.controller.ProfiledPIDController;
@@ -10,6 +10,7 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.Measure;
 import edu.wpi.first.units.VoltageUnit;
+import frc.robot.subsystems.Elevator.ElevatorIO;
 
 import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.Constants.Elevator.ELEVATOR_GEAR_RATIO;
@@ -65,7 +66,7 @@ public class ElevatorIOSim implements ElevatorIO {
     }
 
     @Override
-    public void updateInputs(ElevatorIOInputs inputs) {
+    public void updateInputs(ElevatorIO.ElevatorIOInputs inputs) {
         for (int i = 0; i < LOOPER_DT / (1.0 / 1000.0); i++) {
             // Calculate acceleration using state space model
             double acceleration = A.times(simState).get(1, 0) +
@@ -80,7 +81,7 @@ public class ElevatorIOSim implements ElevatorIO {
             update(1.0 / 1000.0);
         }
 
-        inputs.positionMeters = radToHeight(simState.get(0));
+        inputs.currentPositionMeters = radToHeight(simState.get(0));
         inputs.velocityMetersPerSec = radToHeight(simState.get(1));
         inputs.setpointMeters = targetPositionMeters;
         inputs.statorCurrentAmps = Math.copySign(inputTorqueCurrent, appliedVolts.magnitude());
@@ -135,7 +136,7 @@ public class ElevatorIOSim implements ElevatorIO {
     }
 
     @Override
-    public void setElevatorTarget(double meters) {
+    public void setElevatorTarget(double meters,boolean isGoingUp) {
         targetPositionMeters = meters;
         controller.setGoal(heightToRad(meters));
     }

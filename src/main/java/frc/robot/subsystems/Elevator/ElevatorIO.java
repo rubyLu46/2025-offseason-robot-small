@@ -1,23 +1,15 @@
-package frc.robot.subsystems.elevator;
+package frc.robot.subsystems.Elevator;
 
 import org.littletonrobotics.junction.AutoLog;
 
 public interface ElevatorIO {
-    default void updateInputs(ElevatorIOInputs inputs) {
-    }
+    void updateInputs(ElevatorIOInputs inputs);
 
-    default void setElevatorVoltage(double volts) {
-    }
+    void setElevatorVoltage(double volts);
 
-    default void setElevatorTarget(double meters) {
-    }
+    void setElevatorTarget(double meters,boolean isGoingUp);
 
-    default void setElevatorTarget(double meters, boolean isGoingUp) {
-        setElevatorTarget(meters); // Default fallback
-    }
-
-    default void resetElevatorPosition() {
-    }
+    void resetElevatorPosition();
 
     default double getElevatorHeight() {
         return 0.0;
@@ -28,8 +20,8 @@ public interface ElevatorIO {
     }
 
     @AutoLog
-    class ElevatorIOInputs {
-        public double positionMeters = 0.0;
+    class ElevatorIOInputs{
+        public double currentPositionMeters = 0.0;
         public double velocityMetersPerSec = 0.0;
         public double setpointMeters = 0.0;
         public double appliedVolts = 0.0;
@@ -37,11 +29,10 @@ public interface ElevatorIO {
         public double supplyCurrentAmps = 0.0;
         public double motorVoltage = 0.0;
         public double tempCelsius = 0.0;
-        // Dynamic Motion Magic logging
+        // Dynamic Motion Magic
         public boolean isGoingUp = false;
         public double currentAcceleration = 0.0;
         public double currentCruiseVelocity = 0.0;
         public double currentJerk = 0.0;
     }
-
 }

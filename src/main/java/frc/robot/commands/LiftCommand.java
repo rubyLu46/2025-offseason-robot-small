@@ -7,11 +7,11 @@ import frc.robot.drivers.DestinationSupplier;
 import frc.robot.subsystems.Elevator.ElevatorSubsystem;
 import frc.robot.subsystems.endeffector.EndEffectorSubsystem;
 
-public class PokeCommand extends Command {
+public class LiftCommand extends Command {
     private final EndEffectorSubsystem endEffectorSubsystem;
     private final ElevatorSubsystem elevatorSubsystem;
 
-    public PokeCommand(EndEffectorSubsystem endEffectorSubsystem, ElevatorSubsystem elevatorSubsystem) {
+    public LiftCommand(EndEffectorSubsystem endEffectorSubsystem, ElevatorSubsystem elevatorSubsystem) {
         this.endEffectorSubsystem = endEffectorSubsystem;
         this.elevatorSubsystem = elevatorSubsystem;
         addRequirements(endEffectorSubsystem, elevatorSubsystem);
@@ -19,8 +19,8 @@ public class PokeCommand extends Command {
 
     @Override
     public void execute() {
-        elevatorSubsystem.setElevatorPosition(DestinationSupplier.getInstance().getElevatorSetpoint(false));
-        endEffectorSubsystem.setRollerVoltage(EndEffectorParamsNT.ALGAE_POKE_VOLTAGE.getValue());
+        elevatorSubsystem.setElevatorPosition(DestinationSupplier.getInstance().getElevatorSetpoint(true));
+        endEffectorSubsystem.setRollerVoltage(EndEffectorParamsNT.CORAL_SHOOT_VOLTAGE.getValue());
     }
 
     @Override
